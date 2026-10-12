@@ -46,7 +46,7 @@ dotnet publish src\SwitchNet\SwitchNet.csproj -c Release -r win-x64 --self-conta
 
 | Field | GitLab LAN example | CRM LAN example |
 |-------|--------------------|-----------------|
-| SSID | `1505` (confirmed GitLab) | `COMPANY-CRM-WIFI` → still needed |
+| SSID | `1505` (confirmed GitLab) | `CU_bDXR` (confirmed CRM) |
 | Subnet (CIDR) | `192.168.1.0/24` | `192.168.3.0/24` |
 | Gateway | `192.168.1.1` | `192.168.3.1` |
 | USB Wi‑Fi interface | often `Wi-Fi 2` (external stick only; not built-in) | same |
@@ -90,7 +90,7 @@ SwitchNet.exe --apply crm-lan
 
 Until you fill real company values, connect/route steps will target these placeholders:
 
-- SSIDs: GitLab = `1505` (confirmed); CRM still `COMPANY-CRM-WIFI`
+- SSIDs: GitLab = `1505`; CRM = `CU_bDXR` (both confirmed). Subnets/gateways still example placeholders.
 - Subnets: `192.168.1.0/24`, `192.168.3.0/24`
 - Gateways: `192.168.1.1`, `192.168.3.1`
 

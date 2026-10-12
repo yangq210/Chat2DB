@@ -89,7 +89,8 @@ public sealed class ConfigStore
             {
                 Id = "crm-lan",
                 DisplayName = "CRM LAN (.3)",
-                Ssid = "COMPANY-CRM-WIFI",
+                Ssid = "CU_bDXR",
+                WlanProfileName = "CU_bDXR",
                 SubnetCidr = "192.168.3.0/24",
                 Gateway = "192.168.3.1",
                 InterfaceMetric = 10,
