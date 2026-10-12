@@ -52,6 +52,18 @@ public sealed class WifiService
         return result.StdOut.Contains(wlanProfileName, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>Disconnect the USB Wi‑Fi interface (clear association).</summary>
+    public CommandResult Disconnect(string interfaceName)
+    {
+        var name = EscapeArg(interfaceName);
+        // Prefer interface-scoped disconnect; fall back to generic.
+        var scoped = ProcessRunner.Run("netsh", $"wlan disconnect interface=\"{name}\"");
+        if (scoped.Success)
+            return scoped;
+
+        return ProcessRunner.Run("netsh", "wlan disconnect");
+    }
+
     private static string EscapeArg(string value) =>
         value.Replace("\"", "\\\"", StringComparison.Ordinal);
 }

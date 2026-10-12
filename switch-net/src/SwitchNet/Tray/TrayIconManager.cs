@@ -47,14 +47,18 @@ public sealed class TrayIconManager : IDisposable
         var menu = new ContextMenuStrip();
         var config = _configStore.Get();
 
-        var header = new ToolStripLabel("Switch LAN profile")
+        var header = new ToolStripLabel("SwitchNet")
         {
             Font = new Font(SystemFonts.MenuFont, FontStyle.Bold),
         };
         menu.Items.Add(header);
+        menu.Items.Add(new ToolStripLabel("默认有线 = everyday") { Enabled = false });
         menu.Items.Add(new ToolStripSeparator());
 
-        foreach (var profile in config.Profiles)
+        // Prefer wired → GitLab → CRM order in the menu.
+        foreach (var profile in config.Profiles
+                     .OrderBy(p => p.IsWired ? 0 : 1)
+                     .ThenBy(p => p.Id, StringComparer.OrdinalIgnoreCase))
         {
             var captured = profile;
             var item = new ToolStripMenuItem(captured.DisplayName);

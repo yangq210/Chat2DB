@@ -19,29 +19,39 @@ public sealed class ProfileSwitcher
     public event EventHandler<SwitchResult>? SwitchCompleted;
 
     /// <summary>
-    /// Connect Wi-Fi (no admin required), then apply routes/metrics (admin via UAC if needed).
+    /// Wired: restore Ethernet priority (optionally disconnect Wi‑Fi), then elevated routes.
+    /// Wi‑Fi: connect SSID, then temporarily prefer USB for that LAN.
     /// </summary>
     public SwitchResult SwitchTo(NetworkProfile profile, bool skipWifiConnect = false)
     {
         var config = _configStore.Get();
         var steps = new List<string>();
 
-        if (!skipWifiConnect)
+        if (profile.IsWired)
+        {
+            if (config.DisconnectWifiOnWired && !skipWifiConnect)
+            {
+                var disc = _wifi.Disconnect(config.WifiInterfaceName);
+                steps.Add(
+                    disc.Success
+                        ? $"Wi‑Fi disconnect ({config.WifiInterfaceName}): ok"
+                        : $"Wi‑Fi disconnect: {disc.CombinedOutput}");
+            }
+        }
+        else if (!skipWifiConnect)
         {
             if (!_wifi.IsProfileKnown(profile.EffectiveWlanProfileName))
             {
-                var warn =
+                steps.Add(
                     $"Windows has no saved WLAN profile named '{profile.EffectiveWlanProfileName}'. " +
-                    "Connect once manually (and save the password), or set wlanProfileName in config.";
-                steps.Add(warn);
-                // Still attempt connect — netsh may work if the name matches differently.
+                    "Connect once manually (and save the password), or set wlanProfileName in config.");
             }
 
             var wifiResult = _wifi.Connect(profile);
             steps.Add(
                 wifiResult.Success
-                    ? $"Wi-Fi connect to '{profile.Ssid}': ok"
-                    : $"Wi-Fi connect to '{profile.Ssid}': {wifiResult.CombinedOutput}");
+                    ? $"Wi‑Fi connect to '{profile.Ssid}': ok"
+                    : $"Wi‑Fi connect to '{profile.Ssid}': {wifiResult.CombinedOutput}");
         }
 
         SwitchResult routeResult;
@@ -54,8 +64,8 @@ public sealed class ProfileSwitcher
             var elevated = ElevationHelper.RelaunchElevatedToApply(profile.Id);
             routeResult = elevated
                 ? SwitchResult.Ok(
-                    $"Applied routing for {profile.DisplayName} (elevated).",
-                    new[] { "UAC elevation succeeded; routes applied in elevated process." })
+                    $"Applied {profile.DisplayName} (elevated).",
+                    new[] { "UAC elevation succeeded; routes/metrics applied in elevated process." })
                 : SwitchResult.Fail(
                     "Route changes require Administrator. UAC was cancelled or elevation failed.",
                     new[] { "UAC elevation failed or cancelled." });
@@ -76,7 +86,7 @@ public sealed class ProfileSwitcher
         return combined;
     }
 
-    /// <summary>Called from elevated --apply process (routes only).</summary>
+    /// <summary>Called from elevated --apply process (routes/metrics only).</summary>
     public static SwitchResult ApplyElevatedOperations(AppConfig config, NetworkProfile profile)
     {
         var routes = new RouteService();
@@ -89,6 +99,8 @@ public sealed class ProfileSwitcher
             return null;
 
         return _configStore.Get().Profiles.FirstOrDefault(p =>
+            p.IsWifi &&
+            !string.IsNullOrWhiteSpace(p.Ssid) &&
             string.Equals(p.Ssid, ssid, StringComparison.OrdinalIgnoreCase));
     }
 }

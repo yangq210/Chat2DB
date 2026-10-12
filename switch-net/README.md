@@ -1,37 +1,32 @@
 # SwitchNet
 
-Windows 11 system-tray utility that switches company Wi‑Fi profiles and prefers the matching LAN (routes / gateway / interface metric).
+Windows 11 system-tray utility for **three LANs**: everyday **wired Ethernet**, plus temporary **GitLab** / **CRM** hops on an external USB Wi‑Fi stick.
 
-Built for **Project switch-net**: hop between **GitLab LAN (.1)** and **CRM LAN (.3)** without manual `netsh` / route edits.
+## Tray actions
+
+| Action | Behavior |
+|--------|----------|
+| **默认有线** | Everyday default — Ethernet metric wins; clear GitLab/CRM routes; disconnect USB Wi‑Fi (configurable) |
+| **GitLab** | Connect SSID `1505`, prefer USB for `192.168.1.0/24` via `192.168.1.1` |
+| **CRM** | Connect SSID `CU_bDXR`, prefer USB for `192.168.3.0/24` via `192.168.3.1` |
+
+Resting state is **wired**. Do not leave Wi‑Fi preferred after GitLab/CRM work — pick **默认有线**.
 
 ## Requirements
 
 - Windows 11
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) (to build)
-- Saved WLAN profiles for each SSID (connect once in Windows Settings so the password is stored)
+- Saved WLAN profiles for `1505` and `CU_bDXR`
 - **Administrator (UAC)** when applying routes / interface metrics
+- External USB Wi‑Fi (MERCURY Wireless N) — not the laptop built-in adapter
 
-## Build
+## Build / run
 
 ```powershell
 cd switch-net
 dotnet restore
-dotnet build -c Release
-```
-
-Run from the build output:
-
-```powershell
 dotnet run --project src\SwitchNet\SwitchNet.csproj -c Release
 ```
-
-Or start the exe:
-
-```powershell
-.\src\SwitchNet\bin\Release\net8.0-windows\SwitchNet.exe
-```
-
-Optional single-folder publish:
 
 ```powershell
 dotnet publish src\SwitchNet\SwitchNet.csproj -c Release -r win-x64 --self-contained false -o .\publish
@@ -40,64 +35,33 @@ dotnet publish src\SwitchNet\SwitchNet.csproj -c Release -r win-x64 --self-conta
 
 ## First-run setup
 
-1. Start SwitchNet — a tray icon appears (green network glyph).
-2. Right-click → **Settings…** (or double-click the tray icon).
-3. Replace placeholders with your real values:
+1. Start SwitchNet — tray icon appears.
+2. Set **USB Wi‑Fi interface** name from `netsh interface show interface` (often `Wi-Fi 2`).
+3. Confirmed Wi‑Fi profiles:
 
-| Field | GitLab LAN | CRM LAN |
-|-------|------------|---------|
-| SSID | `1505` (confirmed) | `CU_bDXR` (confirmed) |
-| Subnet (CIDR) | `192.168.1.0/24` (**placeholder**) | `192.168.3.0/24` (from host `192.168.3.175`) |
-| Gateway | `192.168.1.1` (**placeholder**) | `192.168.3.1` (assumed from DNS) |
-| USB Wi‑Fi interface | Set from `netsh interface show interface` for the **MERCURY Wireless N** stick (often `Wi-Fi 2`, not built-in) | same |
+| Profile | SSID | Subnet | Gateway | Sample host |
+|---------|------|--------|---------|-------------|
+| GitLab | `1505` | `192.168.1.0/24` | `192.168.1.1` | `192.168.1.16` |
+| CRM | `CU_bDXR` | `192.168.3.0/24` | `192.168.3.1` | `192.168.3.175` |
 
-4. Config is stored at `%AppData%\SwitchNet\profiles.json` (tray → **Open config folder**).
+4. Wired Ethernet subnet/gateway still TBD — paste `ipconfig /all` for the Ethernet adapter when convenient. **默认有线** still restores metric priority without it.
+5. Config: `%AppData%\SwitchNet\profiles.json`
 
-### Ethernet + USB Wi‑Fi both up
+## UAC / elevation
 
-Win11 usually prefers Ethernet for the default route. On profile apply, SwitchNet lowers the **USB Wi‑Fi** metric below Ethernet, optionally raises Ethernet metrics (`preferWifiOverEthernet`), binds the LAN subnet route to the USB IF, and (when enabled) prefers the profile default route via that gateway. See Project doc `docs/switch-net-app.md`.
-
-## Usage
-
-| Action | What happens |
-|--------|----------------|
-| Tray → **GitLab LAN (.1)** / **CRM LAN (.3)** | `netsh wlan connect` to that SSID, then apply routes/metric |
-| SSID changes while auto-switch is on | Matching profile’s routes are applied (Wi‑Fi already connected) |
-| Tray → **Settings…** | Edit SSIDs, subnets, gateways, auto-switch, interface name |
-
-### UAC / elevation
-
-- The app starts **unelevated** (`asInvoker`) so it can sit in the tray quietly.
-- **Route and interface-metric changes require Administrator.** On profile switch, SwitchNet relaunches itself with `runas` / `--apply <profile-id>` and Windows shows a **UAC prompt**.
-- Approve UAC to apply routing. Cancel leaves Wi‑Fi connect attempted but routes unchanged.
-- To always run elevated, change `app.manifest` `requestedExecutionLevel` to `requireAdministrator` and rebuild (UAC at every launch).
-
-### CLI (elevated apply only)
+App starts unelevated. Profile apply relaunches with `runas` / `--apply <profile-id>` (UAC prompt).
 
 ```powershell
+SwitchNet.exe --apply default-wired
 SwitchNet.exe --apply gitlab-lan
 SwitchNet.exe --apply crm-lan
 ```
 
 ## How it works
 
-1. **Wi‑Fi** — `netsh wlan connect` on the configured **USB** adapter profile.
-2. **Beat Ethernet** — set USB Wi‑Fi metric lower than Ethernet; raise competing Ethernet metrics when `preferWifiOverEthernet` is true.
-3. **LAN route** — `route add <network> mask <mask> <gateway> … if <usb-if>` (metric 1).
-4. **Default route** (optional per profile) — `route add 0.0.0.0 …` via the profile gateway on the USB IF.
+**默认有线:** Ethernet metric low, USB Wi‑Fi metric high, delete temporary Wi‑Fi LAN/default routes, optional `netsh wlan disconnect`.
 
-## Placeholders you must replace
-
-Until you fill real company values, connect/route steps will target these placeholders:
-
-- SSIDs: GitLab = `1505`; CRM = `CU_bDXR` (both confirmed). Subnets/gateways still example placeholders.
-- Subnets: `192.168.1.0/24`, `192.168.3.0/24`
-- Gateways: `192.168.1.1`, `192.168.3.1`
-
-Also confirm:
-
-- Exact Windows WLAN profile names (`netsh wlan show profiles`) if they differ from the SSID → set `wlanProfileName` in config
-- Wi‑Fi adapter display name (`Wi-Fi` vs `Wi-Fi 2`, etc.)
+**GitLab / CRM:** `netsh wlan connect`, raise Ethernet metric / lower USB Wi‑Fi, bind LAN (+ optional default) routes to the USB IF. Cleared when returning to 默认有线 or switching the other Wi‑Fi profile.
 
 ## Project layout
 
@@ -106,14 +70,11 @@ switch-net/
   SwitchNet.sln
   README.md
   src/SwitchNet/
-    App.xaml(.cs)           Tray host + --apply entry
+    App.xaml(.cs)
     Config/                 profiles.json + load/save
     Network/                wifi, routes, elevation, SSID watcher
     Tray/                   NotifyIcon menu
     UI/                     Settings window
 ```
 
-## Notes
-
-- This folder is standalone. It does not modify Chat2DB client/server code.
-- Build and run on Windows 11; this source tree is authored for `net8.0-windows` (WPF + WinForms NotifyIcon).
+Standalone folder — does not modify Chat2DB client/server code.

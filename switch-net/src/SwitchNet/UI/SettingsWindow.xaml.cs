@@ -23,6 +23,7 @@ public partial class SettingsWindow : Window
     {
         AutoSwitchCheck.IsChecked = config.AutoSwitchOnSsidChange;
         PreferWifiCheck.IsChecked = config.PreferWifiOverEthernet;
+        DisconnectWifiCheck.IsChecked = config.DisconnectWifiOnWired;
         InterfaceNameBox.Text = config.WifiInterfaceName;
         PollIntervalBox.Text = config.PollIntervalSeconds.ToString();
 
@@ -48,6 +49,7 @@ public partial class SettingsWindow : Window
         var config = _configStore.Get();
         config.AutoSwitchOnSsidChange = AutoSwitchCheck.IsChecked == true;
         config.PreferWifiOverEthernet = PreferWifiCheck.IsChecked == true;
+        config.DisconnectWifiOnWired = DisconnectWifiCheck.IsChecked == true;
         config.WifiInterfaceName = InterfaceNameBox.Text.Trim();
         config.PollIntervalSeconds = poll;
         config.Profiles = _editors.Select(ed => ed.ToProfile()).ToList();
@@ -72,12 +74,13 @@ public partial class SettingsWindow : Window
     {
         private readonly string _id;
         private readonly TextBox _displayName = new() { Margin = new Thickness(0, 0, 0, 4) };
+        private readonly TextBox _mode = new() { Margin = new Thickness(0, 0, 0, 4) };
         private readonly TextBox _ssid = new() { Margin = new Thickness(0, 0, 0, 4) };
         private readonly TextBox _wlan = new() { Margin = new Thickness(0, 0, 0, 4) };
         private readonly TextBox _subnet = new() { Margin = new Thickness(0, 0, 0, 4) };
         private readonly TextBox _gateway = new() { Margin = new Thickness(0, 0, 0, 4) };
         private readonly TextBox _metric = new() { Margin = new Thickness(0, 0, 0, 4), Width = 80, HorizontalAlignment = HorizontalAlignment.Left };
-        private readonly CheckBox _preferDefault = new() { Content = "Prefer default route via this gateway", Margin = new Thickness(0, 4, 0, 0) };
+        private readonly CheckBox _preferDefault = new() { Content = "Prefer default route via this gateway (Wi‑Fi profiles)", Margin = new Thickness(0, 4, 0, 0) };
 
         public Border Root { get; }
 
@@ -85,6 +88,7 @@ public partial class SettingsWindow : Window
         {
             _id = profile.Id;
             _displayName.Text = profile.DisplayName;
+            _mode.Text = string.IsNullOrWhiteSpace(profile.Mode) ? (profile.IsWired ? "wired" : "wifi") : profile.Mode;
             _ssid.Text = profile.Ssid;
             _wlan.Text = profile.WlanProfileName;
             _subnet.Text = profile.SubnetCidr;
@@ -94,9 +98,10 @@ public partial class SettingsWindow : Window
 
             var panel = new StackPanel { Margin = new Thickness(12) };
             panel.Children.Add(Labeled("Display name", _displayName));
+            panel.Children.Add(Labeled("Mode (wired | wifi)", _mode));
             panel.Children.Add(Labeled("SSID", _ssid));
             panel.Children.Add(Labeled("WLAN profile name (optional)", _wlan));
-            panel.Children.Add(Labeled("Subnet (CIDR)", _subnet));
+            panel.Children.Add(Labeled("Subnet (CIDR) — wired TBD OK empty", _subnet));
             panel.Children.Add(Labeled("Gateway", _gateway));
             panel.Children.Add(Labeled("Interface metric", _metric));
             panel.Children.Add(_preferDefault);
@@ -117,10 +122,15 @@ public partial class SettingsWindow : Window
             _ = int.TryParse(_metric.Text.Trim(), out var metric);
             if (metric <= 0) metric = 10;
 
+            var mode = _mode.Text.Trim().ToLowerInvariant();
+            if (mode is not ("wired" or "wifi"))
+                mode = string.IsNullOrWhiteSpace(_ssid.Text) ? "wired" : "wifi";
+
             return new NetworkProfile
             {
                 Id = _id,
                 DisplayName = _displayName.Text.Trim(),
+                Mode = mode,
                 Ssid = _ssid.Text.Trim(),
                 WlanProfileName = _wlan.Text.Trim(),
                 SubnetCidr = _subnet.Text.Trim(),

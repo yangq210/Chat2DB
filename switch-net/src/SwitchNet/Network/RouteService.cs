@@ -7,11 +7,69 @@ namespace SwitchNet.Network;
 public sealed class RouteService
 {
     /// <summary>
-    /// Apply interface metrics and routes so the configured USB Wi‑Fi wins over Ethernet
-    /// for the profile LAN subnet (and optionally the default route).
+    /// Apply metrics/routes for a profile. Wired restores Ethernet as everyday default;
+    /// Wi‑Fi temporarily prefers USB for that LAN.
     /// Requires elevation (Administrator).
     /// </summary>
     public SwitchResult Apply(AppConfig config, NetworkProfile profile)
+    {
+        return profile.IsWired
+            ? RestoreWired(config, profile)
+            : PreferWifi(config, profile);
+    }
+
+    /// <summary>
+    /// Everyday default: Ethernet metric lower than USB Wi‑Fi; remove temporary Wi‑Fi routes.
+    /// </summary>
+    public SwitchResult RestoreWired(AppConfig config, NetworkProfile profile)
+    {
+        var steps = new List<string>();
+        var interfaces = ListInterfaces();
+        var ethernet = FindEthernetInterfaces(interfaces, config);
+        var wifiName = config.WifiInterfaceName;
+        var ethMetric = profile.InterfaceMetric > 0 ? profile.InterfaceMetric : Math.Max(1, config.EthernetMetric);
+        var wifiResting = Math.Max(ethMetric + 1, config.WifiRestingMetric);
+
+        if (ethernet.Count == 0)
+            steps.Add("No Ethernet interface found (check ethernetInterfaceNames / cable).");
+
+        var ethOk = false;
+        foreach (var eth in ethernet)
+        {
+            var ethResult = ProcessRunner.Run(
+                "netsh",
+                $"interface ipv4 set interface \"{Escape(eth.Name)}\" metric={ethMetric}");
+            ethOk |= ethResult.Success;
+            steps.Add(
+                $"Ethernet '{eth.Name}' metric → {ethMetric}: " +
+                (ethResult.Success ? "ok" : ethResult.CombinedOutput));
+        }
+
+        var wifiResult = ProcessRunner.Run(
+            "netsh",
+            $"interface ipv4 set interface \"{Escape(wifiName)}\" metric={wifiResting}");
+        steps.Add(
+            $"USB Wi‑Fi '{wifiName}' metric → {wifiResting} (resting): " +
+            (wifiResult.Success ? "ok" : wifiResult.CombinedOutput));
+
+        // Remove temporary GitLab/CRM LAN + default routes we may have added.
+        foreach (var wifiProfile in config.Profiles.Where(p => p.IsWifi))
+            ClearWifiProfileRoutes(wifiProfile, steps);
+
+        var ok = ethernet.Count == 0 ? wifiResult.Success : (ethOk || wifiResult.Success);
+
+        return new SwitchResult(
+            ok,
+            ok
+                ? "Restored 默认有线 — Ethernet preferred; Wi‑Fi routes cleared."
+                : "Partial failure restoring wired default.",
+            steps);
+    }
+
+    /// <summary>
+    /// Temporary hop: USB Wi‑Fi wins over Ethernet for this profile’s LAN (and optional default).
+    /// </summary>
+    public SwitchResult PreferWifi(AppConfig config, NetworkProfile profile)
     {
         var wifiName = config.WifiInterfaceName;
         var steps = new List<string>();
@@ -19,15 +77,16 @@ public sealed class RouteService
 
         var wifi = FindInterface(interfaces, wifiName);
         if (wifi is null)
-        {
             steps.Add($"Wi‑Fi interface '{wifiName}' not found. Check wifiInterfaceName (USB adapter).");
-        }
 
         var ethernet = FindEthernetInterfaces(interfaces, config);
         var wifiMetric = ResolveWifiMetric(config, profile, ethernet);
         steps.Add($"Target USB Wi‑Fi metric: {wifiMetric}");
 
-        // Raise Ethernet metrics that would otherwise beat Wi‑Fi (Win11 default: Ethernet wins).
+        // Clear other Wi‑Fi profiles’ forced routes first.
+        foreach (var other in config.Profiles.Where(p => p.IsWifi && !string.Equals(p.Id, profile.Id, StringComparison.OrdinalIgnoreCase)))
+            ClearWifiProfileRoutes(other, steps);
+
         if (config.PreferWifiOverEthernet)
         {
             var ethFloor = Math.Max(wifiMetric + Math.Max(1, config.EthernetMetricPenalty), wifiMetric + 1);
@@ -63,9 +122,8 @@ public sealed class RouteService
                 steps);
         }
 
-        // Prefer the profile LAN via the Wi‑Fi NIC (bound to IF index when known).
         _ = ProcessRunner.Run("route", $"delete {network} mask {mask}");
-        var ifIndex = wifi?.Index ?? GetInterfaceIndex(wifiName);
+        var ifIndex = wifi?.Index.ToString() ?? GetInterfaceIndex(wifiName);
         var lanArgs = ifIndex is not null
             ? $"add {network} mask {mask} {profile.Gateway} metric 1 if {ifIndex}"
             : $"add {network} mask {mask} {profile.Gateway} metric 1";
@@ -85,7 +143,6 @@ public sealed class RouteService
 
         if (profile.PreferDefaultRoute)
         {
-            // Prefer default via Wi‑Fi gateway; metric stays at/under wifi interface metric.
             _ = ProcessRunner.Run("route", $"delete 0.0.0.0 mask 0.0.0.0 {profile.Gateway}");
             var defMetric = Math.Max(1, wifiMetric);
             var defArgs = ifIndex is not null
@@ -105,16 +162,37 @@ public sealed class RouteService
         }
 
         var ok = metricResult.Success || lanAdd.Success;
-        var message = ok
-            ? $"Applied routing for {profile.DisplayName} (USB Wi‑Fi preferred over Ethernet)."
-            : $"Partial failure applying routes for {profile.DisplayName}.";
-
-        return new SwitchResult(ok, message, steps);
+        return new SwitchResult(
+            ok,
+            ok
+                ? $"Applied {profile.DisplayName} (USB Wi‑Fi preferred until 默认有线)."
+                : $"Partial failure applying routes for {profile.DisplayName}.",
+            steps);
     }
 
-    /// <summary>
-    /// Choose a Wi‑Fi metric that is strictly lower than any competing Ethernet metric.
-    /// </summary>
+    private static void ClearWifiProfileRoutes(NetworkProfile wifiProfile, List<string> steps)
+    {
+        if (!string.IsNullOrWhiteSpace(wifiProfile.Gateway))
+        {
+            var delDef = ProcessRunner.Run("route", $"delete 0.0.0.0 mask 0.0.0.0 {wifiProfile.Gateway}");
+            steps.Add(
+                $"clear default via {wifiProfile.Gateway}: " +
+                (delDef.Success || delDef.CombinedOutput.Contains("not found", StringComparison.OrdinalIgnoreCase)
+                    ? "ok"
+                    : delDef.CombinedOutput));
+        }
+
+        if (TryParseCidr(wifiProfile.SubnetCidr, out var network, out var mask))
+        {
+            var delLan = ProcessRunner.Run("route", $"delete {network} mask {mask}");
+            steps.Add(
+                $"clear LAN {wifiProfile.SubnetCidr}: " +
+                (delLan.Success || delLan.CombinedOutput.Contains("not found", StringComparison.OrdinalIgnoreCase)
+                    ? "ok"
+                    : delLan.CombinedOutput));
+        }
+    }
+
     private static int ResolveWifiMetric(
         AppConfig config,
         NetworkProfile profile,
@@ -125,7 +203,6 @@ public sealed class RouteService
             return desired;
 
         var minEth = ethernet.Min(e => e.Metric);
-        // Win11 Ethernet is often ~25; ensure Wi‑Fi is lower even if profile metric was too high.
         if (desired >= minEth)
             desired = Math.Max(1, minEth - Math.Max(1, config.WifiMetricMargin));
 
@@ -150,7 +227,6 @@ public sealed class RouteService
                 if (named.Count > 0)
                     return named.Contains(i.Name);
 
-                // Auto: typical Win11 Ethernet adapter display names.
                 return i.Name.Contains("Ethernet", StringComparison.OrdinalIgnoreCase);
             })
             .ToList();
@@ -167,8 +243,6 @@ public sealed class RouteService
         if (string.IsNullOrWhiteSpace(result.StdOut))
             return list;
 
-        // Idx     Met         MTU          State                Name
-        // 12       25       1500          connected            Ethernet
         foreach (var raw in result.StdOut.Split('\n'))
         {
             var line = raw.TrimEnd('\r');

@@ -39,7 +39,7 @@ public partial class App : System.Windows.Application
 
         _tray.ShowBalloon(
             "SwitchNet",
-            "Running in the tray. Right-click to pick GitLab LAN (.1) or CRM LAN (.3).");
+            "Tray: 默认有线 / GitLab / CRM. Everyday default is wired Ethernet.");
     }
 
     private static bool TryHandleApplyArgs(string[] args, AppConfig config, out int exitCode)

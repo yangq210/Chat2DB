@@ -1,15 +1,30 @@
 {
-  "autoSwitchOnSsidChange": true,
+  "autoSwitchOnSsidChange": false,
   "wifiInterfaceName": "Wi-Fi 2",
   "ethernetInterfaceNames": [],
   "preferWifiOverEthernet": true,
+  "disconnectWifiOnWired": true,
+  "ethernetMetric": 10,
+  "wifiRestingMetric": 50,
   "ethernetMetricPenalty": 40,
   "wifiMetricMargin": 5,
   "pollIntervalSeconds": 15,
   "profiles": [
     {
+      "id": "default-wired",
+      "displayName": "默认有线",
+      "mode": "wired",
+      "ssid": "",
+      "wlanProfileName": "",
+      "subnetCidr": "",
+      "gateway": "",
+      "interfaceMetric": 10,
+      "preferDefaultRoute": false
+    },
+    {
       "id": "gitlab-lan",
-      "displayName": "GitLab LAN (.1)",
+      "displayName": "GitLab",
+      "mode": "wifi",
       "ssid": "1505",
       "wlanProfileName": "1505",
       "subnetCidr": "192.168.1.0/24",
@@ -19,7 +34,8 @@
     },
     {
       "id": "crm-lan",
-      "displayName": "CRM LAN (.3)",
+      "displayName": "CRM",
+      "mode": "wifi",
       "ssid": "CU_bDXR",
       "wlanProfileName": "CU_bDXR",
       "subnetCidr": "192.168.3.0/24",
