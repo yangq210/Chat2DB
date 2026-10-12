@@ -78,7 +78,8 @@ public sealed class ConfigStore
             {
                 Id = "gitlab-lan",
                 DisplayName = "GitLab LAN (.1)",
-                Ssid = "COMPANY-GITLAB-WIFI",
+                Ssid = "1505",
+                WlanProfileName = "1505",
                 SubnetCidr = "192.168.1.0/24",
                 Gateway = "192.168.1.1",
                 InterfaceMetric = 10,

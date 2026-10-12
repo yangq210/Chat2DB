@@ -46,12 +46,10 @@ dotnet publish src\SwitchNet\SwitchNet.csproj -c Release -r win-x64 --self-conta
 
 | Field | GitLab LAN example | CRM LAN example |
 |-------|--------------------|-----------------|
-| SSID | `COMPANY-GITLAB-WIFI` → your SSID | `COMPANY-CRM-WIFI` → your SSID |
+| SSID | `1505` (confirmed GitLab) | `COMPANY-CRM-WIFI` → still needed |
 | Subnet (CIDR) | `192.168.1.0/24` | `192.168.3.0/24` |
 | Gateway | `192.168.1.1` | `192.168.3.1` |
 | USB Wi‑Fi interface | often `Wi-Fi 2` (external stick only; not built-in) | same |
-
-Observed SSID `1505` is noted as a placeholder candidate (role unknown — map it once you know which LAN it belongs to).
 
 4. Config is stored at `%AppData%\SwitchNet\profiles.json` (tray → **Open config folder**).
 
@@ -92,7 +90,7 @@ SwitchNet.exe --apply crm-lan
 
 Until you fill real company values, connect/route steps will target these placeholders:
 
-- SSIDs: `COMPANY-GITLAB-WIFI`, `COMPANY-CRM-WIFI`
+- SSIDs: GitLab = `1505` (confirmed); CRM still `COMPANY-CRM-WIFI`
 - Subnets: `192.168.1.0/24`, `192.168.3.0/24`
 - Gateways: `192.168.1.1`, `192.168.3.1`
 
