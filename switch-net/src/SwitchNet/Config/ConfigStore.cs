@@ -67,7 +67,10 @@ public sealed class ConfigStore
     private static AppConfig CreateDefault() => new()
     {
         AutoSwitchOnSsidChange = true,
-        WifiInterfaceName = "Wi-Fi",
+        WifiInterfaceName = "Wi-Fi 2",
+        PreferWifiOverEthernet = true,
+        EthernetMetricPenalty = 40,
+        WifiMetricMargin = 5,
         PollIntervalSeconds = 15,
         Profiles =
         [

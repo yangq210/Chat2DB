@@ -22,6 +22,7 @@ public partial class SettingsWindow : Window
     private void LoadFromConfig(AppConfig config)
     {
         AutoSwitchCheck.IsChecked = config.AutoSwitchOnSsidChange;
+        PreferWifiCheck.IsChecked = config.PreferWifiOverEthernet;
         InterfaceNameBox.Text = config.WifiInterfaceName;
         PollIntervalBox.Text = config.PollIntervalSeconds.ToString();
 
@@ -46,6 +47,7 @@ public partial class SettingsWindow : Window
 
         var config = _configStore.Get();
         config.AutoSwitchOnSsidChange = AutoSwitchCheck.IsChecked == true;
+        config.PreferWifiOverEthernet = PreferWifiCheck.IsChecked == true;
         config.WifiInterfaceName = InterfaceNameBox.Text.Trim();
         config.PollIntervalSeconds = poll;
         config.Profiles = _editors.Select(ed => ed.ToProfile()).ToList();

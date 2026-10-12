@@ -7,8 +7,39 @@ public sealed class AppConfig
     [JsonPropertyName("autoSwitchOnSsidChange")]
     public bool AutoSwitchOnSsidChange { get; set; } = true;
 
+    /// <summary>
+    /// Windows display name of the <b>external USB</b> Wi‑Fi adapter
+    /// (often <c>Wi-Fi 2</c>; confirm with <c>netsh interface show interface</c>).
+    /// Do not point this at the laptop’s built-in Wi‑Fi.
+    /// </summary>
     [JsonPropertyName("wifiInterfaceName")]
-    public string WifiInterfaceName { get; set; } = "Wi-Fi";
+    public string WifiInterfaceName { get; set; } = "Wi-Fi 2";
+
+    /// <summary>
+    /// Optional Ethernet adapter names. Empty = auto-detect names containing "Ethernet".
+    /// Used to raise their metrics so USB Wi‑Fi wins while both stay connected.
+    /// </summary>
+    [JsonPropertyName("ethernetInterfaceNames")]
+    public List<string> EthernetInterfaceNames { get; set; } = new();
+
+    /// <summary>
+    /// When true (default), ensure USB Wi‑Fi metric is lower than Ethernet and raise
+    /// competing Ethernet metrics so Win11 does not keep preferring the wired NIC.
+    /// </summary>
+    [JsonPropertyName("preferWifiOverEthernet")]
+    public bool PreferWifiOverEthernet { get; set; } = true;
+
+    /// <summary>
+    /// Added to the Wi‑Fi metric when raising Ethernet (Ethernet metric becomes wifi + this).
+    /// </summary>
+    [JsonPropertyName("ethernetMetricPenalty")]
+    public int EthernetMetricPenalty { get; set; } = 40;
+
+    /// <summary>
+    /// If the profile Wi‑Fi metric would not beat Ethernet, drop it by at least this margin.
+    /// </summary>
+    [JsonPropertyName("wifiMetricMargin")]
+    public int WifiMetricMargin { get; set; } = 5;
 
     [JsonPropertyName("pollIntervalSeconds")]
     public int PollIntervalSeconds { get; set; } = 15;

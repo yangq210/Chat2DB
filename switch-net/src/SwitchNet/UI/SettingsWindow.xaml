@@ -20,8 +20,11 @@
                    Text="Edit Wi‑Fi SSIDs, LAN subnets, and gateways. Placeholders must be replaced with your company values before use."/>
 
         <CheckBox x:Name="AutoSwitchCheck" Content="Auto-apply routes when SSID changes" Margin="0,0,0,8"/>
+        <CheckBox x:Name="PreferWifiCheck" Content="Prefer USB Wi‑Fi over Ethernet (lower Wi‑Fi metric / raise Ethernet)" Margin="0,0,0,8"/>
+        <TextBlock TextWrapping="Wrap" Margin="0,0,0,8" Foreground="#556"
+                   Text="Use the external USB Wi‑Fi adapter name only (often Wi‑Fi 2). Leave built-in Wi‑Fi unused."/>
         <DockPanel Margin="0,0,0,12">
-          <TextBlock Text="Wi‑Fi interface name:" VerticalAlignment="Center" Width="150"/>
+          <TextBlock Text="USB Wi‑Fi interface:" VerticalAlignment="Center" Width="150"/>
           <TextBox x:Name="InterfaceNameBox" Padding="6,4"/>
         </DockPanel>
         <DockPanel Margin="0,0,0,16">

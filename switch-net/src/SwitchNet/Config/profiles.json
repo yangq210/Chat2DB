@@ -1,6 +1,10 @@
 {
   "autoSwitchOnSsidChange": true,
-  "wifiInterfaceName": "Wi-Fi",
+  "wifiInterfaceName": "Wi-Fi 2",
+  "ethernetInterfaceNames": [],
+  "preferWifiOverEthernet": true,
+  "ethernetMetricPenalty": 40,
+  "wifiMetricMargin": 5,
   "pollIntervalSeconds": 15,
   "profiles": [
     {

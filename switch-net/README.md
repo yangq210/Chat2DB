@@ -49,9 +49,15 @@ dotnet publish src\SwitchNet\SwitchNet.csproj -c Release -r win-x64 --self-conta
 | SSID | `COMPANY-GITLAB-WIFI` → your SSID | `COMPANY-CRM-WIFI` → your SSID |
 | Subnet (CIDR) | `192.168.1.0/24` | `192.168.3.0/24` |
 | Gateway | `192.168.1.1` | `192.168.3.1` |
-| Wi‑Fi interface name | usually `Wi-Fi` (check `netsh interface show interface`) | same |
+| USB Wi‑Fi interface | often `Wi-Fi 2` (external stick only; not built-in) | same |
+
+Observed SSID `1505` is noted as a placeholder candidate (role unknown — map it once you know which LAN it belongs to).
 
 4. Config is stored at `%AppData%\SwitchNet\profiles.json` (tray → **Open config folder**).
+
+### Ethernet + USB Wi‑Fi both up
+
+Win11 usually prefers Ethernet for the default route. On profile apply, SwitchNet lowers the **USB Wi‑Fi** metric below Ethernet, optionally raises Ethernet metrics (`preferWifiOverEthernet`), binds the LAN subnet route to the USB IF, and (when enabled) prefers the profile default route via that gateway. See Project doc `docs/switch-net-app.md`.
 
 ## Usage
 
@@ -77,10 +83,10 @@ SwitchNet.exe --apply crm-lan
 
 ## How it works
 
-1. **Wi‑Fi** — `netsh wlan connect name="<profile>"` (optional `ssid=` if names differ).
-2. **Interface metric** — `netsh interface ipv4 set interface "Wi-Fi" metric=<n>` (lower = preferred).
-3. **LAN route** — `route add <network> mask <mask> <gateway>`.
-4. **Default route** (optional per profile) — `route add 0.0.0.0 mask 0.0.0.0 <gateway> metric=<n>`.
+1. **Wi‑Fi** — `netsh wlan connect` on the configured **USB** adapter profile.
+2. **Beat Ethernet** — set USB Wi‑Fi metric lower than Ethernet; raise competing Ethernet metrics when `preferWifiOverEthernet` is true.
+3. **LAN route** — `route add <network> mask <mask> <gateway> … if <usb-if>` (metric 1).
+4. **Default route** (optional per profile) — `route add 0.0.0.0 …` via the profile gateway on the USB IF.
 
 ## Placeholders you must replace
 
