@@ -1,0 +1,27 @@
+{
+  "autoSwitchOnSsidChange": true,
+  "wifiInterfaceName": "Wi-Fi",
+  "pollIntervalSeconds": 15,
+  "profiles": [
+    {
+      "id": "gitlab-lan",
+      "displayName": "GitLab LAN (.1)",
+      "ssid": "COMPANY-GITLAB-WIFI",
+      "wlanProfileName": "",
+      "subnetCidr": "192.168.1.0/24",
+      "gateway": "192.168.1.1",
+      "interfaceMetric": 10,
+      "preferDefaultRoute": true
+    },
+    {
+      "id": "crm-lan",
+      "displayName": "CRM LAN (.3)",
+      "ssid": "COMPANY-CRM-WIFI",
+      "wlanProfileName": "",
+      "subnetCidr": "192.168.3.0/24",
+      "gateway": "192.168.3.1",
+      "interfaceMetric": 10,
+      "preferDefaultRoute": true
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Resources\tray.ico</ApplicationIcon>
+    <RootNamespace>SwitchNet</RootNamespace>
+    <AssemblyName>SwitchNet</AssemblyName>
+    <Version>0.1.0</Version>
+    <Description>Windows 11 tray utility to switch Wi-Fi profiles and LAN routes (GitLab .1 / CRM .3).</Description>
+    <PublishSingleFile>false</PublishSingleFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Update="Config\profiles.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <Resource Include="Resources\tray.ico" Condition="Exists('Resources\tray.ico')" />
+  </ItemGroup>
+
+</Project>
